@@ -1,8 +1,3 @@
-#ifdef PSP
-	#include <pspkernel.h>
-	#include <pspgu.h>
-#endif
-
 #include <libretro.h>
 #include <retro_miscellaneous.h>
 #include <streams/file_stream.h>
@@ -251,12 +246,10 @@ void retro_init()
 	else
 		log_cb = NULL;
 
-	/* State that the core supports achievements. */
+	/* State that the core supports achievements. The frontend must also support RGB565 */
 	environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &achievements);
 	rgb565 = RETRO_PIXEL_FORMAT_RGB565;
-
-	if (environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &rgb565) && log_cb)
-		log_cb(RETRO_LOG_INFO, "Frontend supports RGB565 - will use that instead of XRGB1555.\n");
+	environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &rgb565);
 
 	init_sfc_setting();
 	InitMemory();
@@ -496,28 +489,7 @@ void retro_run()
 	return;
 #endif
 
-	if (IPPU.RenderThisFrame)
-	{
-	#ifdef PSP
-		static uint32_t __attribute__((aligned(16))) d_list[32];
-		void* const texture_vram_p = (void*) (0x44200000 - (512 * 512)); /* max VRAM address - frame size */
-		sceKernelDcacheWritebackRange(GFX.Screen, GFX.Pitch * IPPU.RenderedScreenHeight);
-		sceGuStart(GU_DIRECT, d_list);
-		sceGuCopyImage(GU_PSM_4444, 0, 0, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch >> 1, GFX.Screen, 0, 0, 512, texture_vram_p);
-		sceGuTexSync();
-		sceGuTexImage(0, 512, 512, 512, texture_vram_p);
-		sceGuTexMode(GU_PSM_5551, 0, 0, GU_FALSE);
-		sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
-		sceGuDisable(GU_BLEND);
-		sceGuFinish();
-		video_cb(texture_vram_p, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
-	#else
-		video_cb(GFX.Screen, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
-	#endif
-	}
-	else
-		video_cb(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
-
+	video_cb(IPPU.RenderThisFrame ? GFX.Screen : NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 	audio_upload_samples();
 }
 
