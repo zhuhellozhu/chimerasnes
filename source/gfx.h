@@ -147,12 +147,17 @@ static INLINE uint16_t COLOR_SUB(uint16_t C1, uint16_t C2)
 	int32_t g           = ((C1 & (SECOND_COLOR_MASK)) | (0x20 << GREEN_SHIFT_BITS)) - (C2 & (SECOND_COLOR_MASK));
 	int32_t rgbsaturate = (((g & (0x20 << GREEN_SHIFT_BITS)) | rbcarry) >> 5) * 0x1f;
 	uint16_t retval     = ((rb & (THIRD_COLOR_MASK | FIRST_COLOR_MASK)) | (g & SECOND_COLOR_MASK)) & rgbsaturate;
-	return (retval & 0x0400) >> 5;
+
+#if GREEN_SHIFT_BITS == 6
+	retval             |= (retval & 0x0400) >> 5;
+#endif
+
+	return retval;
 }
 
 #define COLOR_SUB1_2(C1, C2)                \
 	GFX.Zero[(((C1) | RGB_HI_BITS_MASKx2) - \
-	          ((C2) & RGB_REMOVE_LOW_BITS_MASK)) >> 1]
+	((C2) & RGB_REMOVE_LOW_BITS_MASK)) >> 1]
 
 typedef void (*NormalTileRenderer)(uint32_t Tile, int32_t Offset, uint32_t StartLine, uint32_t LineCount);
 typedef void (*ClippedTileRenderer)(uint32_t Tile, int32_t Offset, uint32_t StartPixel, uint32_t Width, uint32_t StartLine, uint32_t LineCount);
